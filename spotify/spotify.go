@@ -1,13 +1,14 @@
 package spotify
 
 import (
-	"encoding/base64"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 type Client struct {
@@ -17,17 +18,22 @@ type Client struct {
 }
 
 func New(clientid, clientsecret string) *Client {
-	return &Client{ClientID: clientid, ClientSecret: clientsecret}
+	return &Client{auth: &auth{}, ClientID: clientid, ClientSecret: clientsecret}
 }
 
 func (c *Client) authorize() error {
-	b64cid := base64.StdEncoding.EncodeToString([]byte(c.ClientID))
-	b64cs := base64.StdEncoding.EncodeToString([]byte(c.ClientSecret))
+	httpc := &http.Client{}
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	httpc.Transport = tr
+	body := strings.NewReader(`grant_type=client_credentials`)
+	req, _ := http.NewRequest("POST", "https://accounts.spotify.com/api/token", body)
+	req.Header.Add("cache-control", "no-cache")
+	req.SetBasicAuth(c.ClientID, c.ClientSecret)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	req, _ := http.NewRequest("POST", "https://accounts.spotify.com/api/token", nil)
-	req.Header.Add("Authorization", fmt.Sprintf("Basic %s:%s", b64cid, b64cs))
-
-	res, err := http.DefaultClient.Do(req)
+	res, err := httpc.Do(req)
 	if err != nil {
 		return err
 	}
@@ -356,8 +362,8 @@ func (c *Client) GetCategory(name, country, locale string) (*Category, error) {
 	if locale != "" {
 		vals.Add("locale", locale)
 	}
-
-	res, err := c.request("GET", EndpointGetCategory(name)+"?"+vals.Encode(), nil)
+	en := vals.Encode()
+	res, err := c.request("GET", EndpointGetCategory(name)+"?"+en, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -409,3 +415,61 @@ func (c *Client) GetCategoryPlaylists(name, country string, limit, offset int) (
 
 	return page, nil
 }
+
+func (c *Client) GetRecmmendations() (*Recommendations, error) {
+	res, err := c.request("GET", EndpointGetRecommendations(), nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	rec := &Recommendations{Seeds: make([]*RecommendationSeed, 0), Tracks: make([]*Track, 0)}
+
+	err = unmarshal(res, rec)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return rec, nil
+}
+
+func (c *Client) UserFollowPlaylist(oid, pid string) error {
+	_, err := c.request("PUT", EndpointFollowPlaylist(oid, pid), nil)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) UserUnfollowPlaylist(oid, pid string) error {
+	_, err := c.request("DELETE", EndpointUnfollowPlaylist(oid, pid), nil)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) UsersFollowsPlaylist(oid, pid string, uid []string) ([]bool, error) {
+	res, err := c.request("GET", EndpointUsersFollowsPlaylist(oid, pid, uid), nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var bools = make([]bool, 0)
+
+	err = unmarshal(res, bools)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return bools, nil
+}
+
+// the 'Me' endpoints don't work
