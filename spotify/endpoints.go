@@ -24,7 +24,7 @@ func EndpointDeleteAlbums(ids []string) string {
 func EndpointContainsAlbums(ids []string) string {
 	return EndpointGetSavedAlbums() + "/contains?ids=" + strings.Join(ids, ",")
 }
-func EndpointSearch(name, typ string) string { return base + "search?q=" + name + "&type=" + typ }
+func EndpointSearch(query, typ string) string { return base + "search?q=" + query + "&type=" + typ }
 
 // ==================== END ALBUMS ====================
 
@@ -46,7 +46,9 @@ func EndpointBrowseNewReleases() string             { return base + "browse/new-
 func EndpointBrowseCategories() string              { return base + "browse/categories" }
 func EndpointGetCategory(id string) string          { return EndpointBrowseCategories() + "/" + id }
 func EndpointGetCategoryPlaylists(id string) string { return EndpointGetCategory(id) + "/playlists" }
-func EndpointGetRecommendations() string            { return base + "recommendations" }
+func EndpointGetRecommendations(args ...string) string {
+	return base + "recommendations?" + strings.Join(args, "&")
+}
 
 // ==================== END BROWSE ====================
 

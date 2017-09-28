@@ -416,8 +416,8 @@ func (c *Client) GetCategoryPlaylists(name, country string, limit, offset int) (
 	return page, nil
 }
 
-func (c *Client) GetRecmmendations() (*Recommendations, error) {
-	res, err := c.request("GET", EndpointGetRecommendations(), nil)
+func (c *Client) GetRecommendations(args ...string) (*Recommendations, error) {
+	res, err := c.request("GET", EndpointGetRecommendations(args...), nil)
 
 	if err != nil {
 		return nil, err
@@ -470,6 +470,80 @@ func (c *Client) UsersFollowsPlaylist(oid, pid string, uid []string) ([]bool, er
 	}
 
 	return bools, nil
+}
+
+func (c *Client) SearchTrack(query string, offset int) ([]*Track, error) {
+	url := EndpointSearch(url.QueryEscape(query), "track")
+	if offset != 0 {
+		url += fmt.Sprintf("&offset=%d", offset)
+	}
+
+	res, err := c.request("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	type temp struct {
+		Page *Paging `json:"tracks"`
+	}
+
+	var t temp
+
+	if err = unmarshal(res, &t); err != nil {
+		return nil, err
+	}
+
+	var result []*Track
+	json.Unmarshal(t.Page.Items, &result)
+
+	return result, nil
+}
+
+func (c *Client) SearchAlbum(query string, offset int) ([]*Album, error) {
+	url := EndpointSearch(url.QueryEscape(query), "album")
+	if offset != 0 {
+		url += fmt.Sprintf("&offset=%d", offset)
+	}
+
+	res, err := c.request("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	type temp struct {
+		Page *Paging `json:"albums"`
+	}
+
+	var t temp
+	if err = unmarshal(res, &t); err != nil {
+		return nil, err
+	}
+
+	var result []*Album
+	json.Unmarshal(t.Page.Items, &result)
+	return result, nil
+}
+
+func (c *Client) SearchArtist(query string, offset int) ([]*Artist, error) {
+	url := EndpointSearch(url.QueryEscape(query), "artist")
+	if offset != 0 {
+		url += fmt.Sprintf("&offset=%d", offset)
+	}
+
+	res, err := c.request("GET", url, nil)
+	if err == nil {
+		type temp struct {
+			Page *Paging `json:"artists"`
+		}
+
+		var t temp
+		if err = unmarshal(res, &t); err == nil {
+			var result []*Artist
+			err = json.Unmarshal(t.Page.Items, &result)
+			return result, err
+		}
+	}
+	return nil, err
 }
 
 // the 'Me' endpoints don't work

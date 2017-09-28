@@ -1,5 +1,7 @@
 package spotify
 
+import "encoding/json"
+
 type Album struct {
 	AlbumType            string        `json:"album_type"`
 	Artists              []*Artist     `json:"artists"`
@@ -155,13 +157,13 @@ type Image struct {
 }
 
 type Paging struct {
-	Href     string        `json:"href"`
-	Items    []interface{} `json:"items"`
-	Limit    int           `json:"limit"`
-	Next     string        `json:"next"`
-	Offset   int           `json:"offset"`
-	Previous string        `json:"previous"`
-	Total    int           `json:"total"`
+	Href     string          `json:"href"`
+	Items    json.RawMessage `json:"items"`
+	Limit    int             `json:"limit"`
+	Next     string          `json:"next"`
+	Offset   int             `json:"offset"`
+	Previous string          `json:"previous"`
+	Total    int             `json:"total"`
 }
 
 type CursorBasedPaging struct {
